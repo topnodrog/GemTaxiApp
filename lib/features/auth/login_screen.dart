@@ -16,7 +16,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   UserRole _selectedRole = UserRole.passenger;
 
+  String _formatPhone(String input) {
+    final raw = input.trim();
+    if (raw.startsWith('+')) return raw;
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 10) return '+1$digits';
+    return raw; // fallback; will fail validation below if not E.164
+  }
+
+  bool _isValidE164(String input) {
+    return RegExp(r'^\+[1-9]\d{9,14}$').hasMatch(input);
+  }
+
   void _sendCode() async {
+    final formatted = _formatPhone(_phoneController.text);
+    if (!_isValidE164(formatted)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter a valid phone number in E.164 format (e.g., +1XXXXXXXXXX).")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     
     // For development: Save the selected role in the provider
@@ -26,7 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     
     try {
       await authService.verifyPhoneNumber(
-        phoneNumber: _phoneController.text.trim(),
+        phoneNumber: formatted,
         codeSent: (String verificationId, int? resendToken) {
           setState(() => _isLoading = false);
           Navigator.push(
@@ -90,6 +110,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Use E.164 format (e.g., +1XXXXXXXXXX). For demo, use Firebase test phone numbers.",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 24),
               const Text("Login as:", style: TextStyle(fontWeight: FontWeight.w600)),
