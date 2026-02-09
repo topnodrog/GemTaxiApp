@@ -1,0 +1,43 @@
+{
+  "project_info": {
+    "project_number": "123456789",
+    "firebase_url": "https://gem-taxi-app.firebaseio.com",
+    "project_id": "gem-taxi-app",
+    "storage_bucket": "gem-taxi-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789:android:abcd1234efgh5678",
+        "android_client_info": {
+          "package_name": "com.GemTaxi.GemTaxi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "123456789.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1234567890ABCD1234567890ABCD1234567"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
