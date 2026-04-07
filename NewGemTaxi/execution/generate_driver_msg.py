@@ -3,27 +3,44 @@ import sys
 
 def generate_msg(data):
     date = data.get("date", "N/A")
+    job_id = data.get("job_id", "N/A")
     lines = []
-    lines.append("🚖 *New Job Alert*")
-    lines.append(f"📅 Date: {date}")
     
-    joining = [p for p in data.get("passengers", []) if p["type"] == "Joining"]
-    departing = [p for p in data.get("passengers", []) if p["type"] == "Departing"]
+    # Header Section
+    lines.append("─────────────────────────────")
+    lines.append(f"🚖 *NEW JOB ALERT : #{job_id}*")
+    lines.append("─────────────────────────────")
+    lines.append(f"📅 *Date:* {date}")
+    lines.append(f"🔄 *Wait & Return:* {'✅ YES' if data.get('wait_for_return') else '❌ NO'}")
+    lines.append("")
     
-    for i, pax in enumerate(joining):
-        lines.append(f"✈️ Pickup {i+1}: Toronto Airport ({pax.get('flight_time', 'N/A')})")
-        lines.append(f"👤 Pax: {pax.get('name')} ({pax.get('phone', 'N/A')})")
-        lines.append(f"📍 Drop: Lois M (Hamilton)")
+    joining = [p for p in data.get("passengers", []) if p.get("type") == "Joining"]
+    departing = [p for p in data.get("passengers", []) if p.get("type") == "Departing"]
     
-    if data.get("wait_for_return"):
-        lines.append("---")
-        lines.append("⏳ WAIT FOR RETURN")
-        lines.append("---")
-    
-    for pax in departing:
-        lines.append(f"👤 Pax: {pax.get('name')} ({pax.get('phone', 'N/A')})")
-        lines.append(f"📍 Drop: {pax.get('address', 'N/A')}")
+    # Joining Passengers
+    if joining:
+        lines.append("✈️ *JOINING (PICKUP FROM AIRPORT)*")
+        for i, pax in enumerate(joining):
+            lines.append(f"  • *Passenger {i+1}:* {pax.get('name')} 📞 {pax.get('phone', 'N/A')}")
+            lines.append(f"  • *Flight:* {pax.get('flight_time', 'N/A')}")
+            lines.append(f"  • *Drop-off:* Lois M (Hamilton)")
+            lines.append("")
         
+    if data.get("wait_for_return"):
+        lines.append("⏳ *[ PLEASE WAIT FOR RETURN TRIP ]*")
+        lines.append("")
+        
+    # Departing Passengers
+    if departing:
+        lines.append("🏠 *DEPARTING (RETURN TRIP)*")
+        for i, pax in enumerate(departing):
+            lines.append(f"  • *Passenger {i+1}:* {pax.get('name')} 📞 {pax.get('phone', 'N/A')}")
+            lines.append(f"  • *Drop-off:* {pax.get('address', 'N/A')}")
+            lines.append("")
+            
+    lines.append("─────────────────────────────")
+    lines.append("Please accept this job in the app.")
+    
     return "\n".join(lines)
 
 if __name__ == "__main__":

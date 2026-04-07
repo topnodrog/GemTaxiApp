@@ -17,7 +17,7 @@ void main() async {
   // Enable by building with: --dart-define=USE_FIREBASE_TEST_NUMBERS=true
   const useTestNumbers = bool.fromEnvironment('USE_FIREBASE_TEST_NUMBERS', defaultValue: false);
   if (kDebugMode && useTestNumbers) {
-    FirebaseAuth.instance.settings.appVerificationDisabledForTesting = true;
+    FirebaseAuth.instance.setSettings(appVerificationDisabledForTesting: true);
   }
 
   runApp(const ProviderScope(child: GemTaxiApp()));

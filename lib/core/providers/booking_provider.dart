@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../repositories/booking_repository.dart';
 
 class Booking {
   final String jobId;
@@ -6,6 +7,8 @@ class Booking {
   final List<Map<String, dynamic>> passengers;
   final Map<String, dynamic> routeContext;
   final bool waitForReturn;
+  final String status;
+  final String? driverId;
 
   Booking({
     required this.jobId,
@@ -13,6 +16,8 @@ class Booking {
     required this.passengers,
     required this.routeContext,
     required this.waitForReturn,
+    this.status = 'pending',
+    this.driverId,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -22,32 +27,28 @@ class Booking {
       passengers: List<Map<String, dynamic>>.from(json['passengers']),
       routeContext: Map<String, dynamic>.from(json['route_context']),
       waitForReturn: json['wait_for_return'] as bool? ?? false,
+      status: json['status'] as String? ?? 'pending',
+      driverId: json['driver_id'] as String?,
+    );
+  }
+
+  factory Booking.fromFirestore(Map<String, dynamic> data) {
+    return Booking(
+      jobId: data['job_id'] as String? ?? '',
+      date: data['date_string'] as String? ?? '',
+      passengers: List<Map<String, dynamic>>.from(data['passengers'] ?? []),
+      routeContext: Map<String, dynamic>.from(data['route_context'] ?? {}),
+      waitForReturn: data['wait_for_return'] as bool? ?? false,
+      status: data['status'] as String? ?? 'pending',
+      driverId: data['driver_id'] as String?,
     );
   }
 }
 
-// For now, we use a mock provider that simulates fetching from the automation JSON
-final bookingsProvider = FutureProvider<List<Booking>>((ref) async {
-  // Simulate network delay
-  await Future.delayed(const Duration(seconds: 1));
-  
-  // This is a mock implementation. In a production app, we'd use an API 
-  // or Firebase to read the data updated by the Python script.
-  return [
-    Booking(
-      jobId: "2104",
-      date: "Sunday, January 4",
-      waitForReturn: true,
-      passengers: [
-        {"type": "Joining", "name": "Dustin Gaulton", "phone": "(709) 325-6011", "flight_time": "AC603 0846"},
-        {"type": "Departing", "name": "Ryan Pernites", "phone": "(905) 699-2864", "address": "262 Greenfield Lane, Chatham, ON"}
-      ],
-      routeContext: {
-        "pickup_name": "Dustin",
-        "pickup_loc": "Toronto airport",
-        "drop_loc": "Lois M",
-        "drop_city": "Hamilton"
-      },
-    )
-  ];
+final bookingRepositoryProvider = Provider((ref) => BookingRepository());
+
+// StreamProvider for real-time bookings
+final bookingsProvider = StreamProvider<List<Booking>>((ref) {
+  final repository = ref.watch(bookingRepositoryProvider);
+  return repository.getBookingsStream();
 });

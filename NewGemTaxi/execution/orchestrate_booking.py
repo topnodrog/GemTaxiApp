@@ -2,10 +2,22 @@ import subprocess
 import json
 import os
 import sys
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # Enforce UTF-8 for Windows terminal support with emojis
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
+
+# Initialize Firebase
+SERVICE_ACCOUNT_PATH = "android/app/virtual-cairn-325907-edc3720342e5.json"
+if os.path.exists(SERVICE_ACCOUNT_PATH):
+    cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client(database_id='gemtaxidb')
+else:
+    print(f"Warning: Service account not found at {SERVICE_ACCOUNT_PATH}. Firestore updates will be skipped.")
+    db = None
 
 def orchestrate(email_file_path):
     print(f"--- Starting Orchestration for: {email_file_path} ---")
@@ -59,8 +71,11 @@ def orchestrate(email_file_path):
     except Exception as e:
         print(f"Error during message generation: {e}")
 
-    # 4. Save for Flutter App
+    # 4. Save for Flutter App & Firestore
     print("Step 4: Saving structured data for App integration...")
+    job_id = extracted_data.get("job_id")
+    
+    # Update local bookings.json
     data_dir = "NewGemTaxi/data"
     os.makedirs(data_dir, exist_ok=True)
     bookings_file = os.path.join(data_dir, "bookings.json")
@@ -73,14 +88,29 @@ def orchestrate(email_file_path):
         except:
             existing_bookings = []
             
-    # Append the new extracted data (if not already present by job_id)
-    job_id = extracted_data.get("job_id")
     if not any(b.get("job_id") == job_id for b in existing_bookings):
         existing_bookings.append(extracted_data)
         
     with open(bookings_file, 'w') as f:
         json.dump(existing_bookings, f, indent=2)
     
+    # Push to Firestore
+    if db and job_id:
+        print(f"Pushing job #{job_id} to Firestore...")
+        try:
+            doc_ref = db.collection('bookings').document(job_id)
+            # Prepare data for Firestore
+            firestore_data = extracted_data.copy()
+            firestore_data['date_string'] = extracted_data.get('date')
+            firestore_data['status'] = firestore_data.get('status', 'pending')
+            firestore_data['created_at'] = firestore.SERVER_TIMESTAMP
+            firestore_data['updated_at'] = firestore.SERVER_TIMESTAMP
+            
+            doc_ref.set(firestore_data, merge=True)
+            print("Successfully pushed to Firestore!")
+        except Exception as e:
+            print(f"Error pushing to Firestore: {e}")
+
     print(f"Successfully orchestrate booking {job_id}. Data saved to {bookings_file}")
 
 if __name__ == "__main__":
@@ -90,7 +120,7 @@ if __name__ == "__main__":
         # Create a sample email file for testing
         sample_email = "NewGemTaxi/.tmp/sample_email.txt"
         os.makedirs(os.path.dirname(sample_email), exist_ok=True)
-        with open(sample_email, 'w') as f:
+        with open(sample_email, 'w', encoding='utf-8') as f:
             f.write("""Subject: 2104 - Reservation - Lois M - ABW-AB - Sunday, January 4, 2026
 
 Please pickup Dustin from the Toronto airport and drop him at the Lois M in Hamilton on Sunday, January 4. After dropping Dustin, please wait to pick-up Ryan and drop him at his home in Chatham.

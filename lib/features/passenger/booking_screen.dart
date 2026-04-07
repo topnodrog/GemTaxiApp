@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/theme.dart';
 import '../../core/services/location_service.dart';
+import '../../core/providers/booking_provider.dart';
 
 // Simple State Provider for Booking Status
 // In a real app, this would be a full NotifierProvider
@@ -33,6 +34,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   
   final TextEditingController _pickupController = TextEditingController();
   final TextEditingController _dropoffController = TextEditingController();
+  
+  String? _currentJobId;
 
   Future<void> _myLocation() async {
     final position = await _locationService.getCurrentLocation();
@@ -59,6 +62,20 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final bookingStage = ref.watch(bookingStageProvider);
+    final bookingsAsync = ref.watch(bookingsProvider);
+
+    if (bookingStage == BookingStage.searching && _currentJobId != null) {
+      bookingsAsync.whenData((bookings) {
+        final myJob = bookings.where((b) => b.jobId == _currentJobId).firstOrNull;
+        if (myJob != null && myJob.status == 'accepted') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ref.read(bookingStageProvider.notifier).state != BookingStage.onRide) {
+              ref.read(bookingStageProvider.notifier).state = BookingStage.onRide;
+            }
+          });
+        }
+      });
+    }
 
     return Scaffold(
       body: Stack(
@@ -179,8 +196,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
              const Text("4 mins away • 7.2 km", style: TextStyle(color: Colors.grey)),
              const SizedBox(height: 24),
              ElevatedButton(
-               onPressed: () {
-                 ref.read(bookingStageProvider.notifier).state = BookingStage.searching;
+               onPressed: () async {
+                 final newJobId = DateTime.now().millisecondsSinceEpoch.toString();
+                 setState(() {
+                   _currentJobId = newJobId;
+                 });
+                 final newBooking = Booking(
+                   jobId: newJobId,
+                   date: DateTime.now().toIso8601String(),
+                   waitForReturn: false,
+                   passengers: [{"type": "Passenger", "name": "Gem User"}],
+                   routeContext: {
+                     "pickup_loc": _pickupController.text.isEmpty ? "Current Location" : _pickupController.text,
+                     "drop_loc": _dropoffController.text,
+                   },
+                   status: 'pending',
+                 );
+                 
+                 await ref.read(bookingRepositoryProvider).createBooking(newBooking);
+                 if (mounted) {
+                   ref.read(bookingStageProvider.notifier).state = BookingStage.searching;
+                 }
                },
                child: const Text("Confirm Booking"),
              ),
@@ -190,6 +226,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                  CircularProgressIndicator(),
                  SizedBox(height: 16),
                  Text("Finding a driver..."),
+               ],
+             )
+          ] else if (stage == BookingStage.onRide) ...[
+             const Column(
+               children: [
+                 Icon(Icons.check_circle, color: Colors.green, size: 48),
+                 SizedBox(height: 16),
+                 Text("Driver is on the way!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                ],
              )
           ]
