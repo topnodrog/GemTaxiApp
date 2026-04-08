@@ -14,7 +14,7 @@ SERVICE_ACCOUNT_PATH = "android/app/virtual-cairn-325907-edc3720342e5.json"
 if os.path.exists(SERVICE_ACCOUNT_PATH):
     cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
     firebase_admin.initialize_app(cred)
-    db = firestore.client(database_id='gemtaxidb')
+    db = firestore.client(database_id='gemdb')
 else:
     print(f"Warning: Service account not found at {SERVICE_ACCOUNT_PATH}. Firestore updates will be skipped.")
     db = None
